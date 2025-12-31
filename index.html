@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warta Santri | Portal Google Auth</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #059669;
+            --dark: #0f172a;
+            --bg: #f1f5f9;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: var(--dark); height: 100vh; overflow: hidden; }
+
+        /* --- HALAMAN LOGIN --- */
+        #login-page {
+            position: fixed; inset: 0; background: var(--dark);
+            display: flex; justify-content: center; align-items: center; z-index: 10000;
+        }
+        .login-box {
+            background: white; padding: 40px; border-radius: 24px;
+            width: 90%; max-width: 400px; text-align: center;
+        }
+        .btn-google {
+            background: white; color: #374151; border: 1px solid #d1d5db;
+            padding: 12px 24px; border-radius: 12px; font-weight: 700; cursor: pointer;
+            width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+            margin-top: 25px; transition: 0.2s;
+        }
+        .btn-google:hover { background: #f9fafb; border-color: #9ca3af; }
+
+        /* --- HEADER --- */
+        header {
+            height: 70px; background: white; padding: 0 5%;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .logo { font-weight: 800; font-size: 1.5rem; color: var(--primary); text-decoration: none; }
+        .user-area { display: flex; align-items: center; gap: 12px; }
+        .user-img { width: 35px; height: 35px; border-radius: 50%; border: 2px solid var(--primary); }
+
+        /* --- LAYOUT UTAMA --- */
+        .wrapper { display: flex; height: calc(100vh - 70px); }
+
+        /* --- SIDEBAR --- */
+        aside {
+            width: 260px; background: white; border-right: 1px solid #e2e8f0;
+            padding: 25px; display: flex; flex-direction: column; gap: 8px;
+        }
+        .nav-item {
+            padding: 12px 15px; border-radius: 10px; cursor: pointer;
+            color: #64748b; font-weight: 600; transition: 0.2s;
+        }
+        .nav-item:hover, .nav-item.active { background: #ecfdf5; color: var(--primary); }
+
+        /* --- CONTENT --- */
+        main { flex: 1; overflow-y: auto; padding: 30px; }
+        .container { max-width: 700px; margin: 0 auto; }
+
+        /* --- CARD ARTIKEL --- */
+        .card {
+            background: white; padding: 25px; border-radius: 20px;
+            margin-bottom: 25px; border: 1px solid #f1f5f9; position: relative;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .badge {
+            display: inline-block; padding: 4px 10px; border-radius: 6px;
+            font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 12px;
+        }
+        .badge-santri { background: #dcfce7; color: #166534; }
+        .badge-berita { background: #dbeafe; color: #1e40af; }
+        .badge-admin { background: #fee2e2; color: #991b1b; }
+
+        .btn-del {
+            position: absolute; top: 20px; right: 20px; background: #fff1f2;
+            color: #e11d48; border: none; width: 32px; height: 32px;
+            border-radius: 8px; cursor: pointer; font-size: 1rem;
+        }
+
+        /* --- MODAL & FAB --- */
+        .fab {
+            position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;
+            background: var(--primary); color: white; border-radius: 50%; border: none;
+            font-size: 30px; cursor: pointer; box-shadow: 0 10px 15px rgba(5,150,105,0.4);
+        }
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            display: none; justify-content: center; align-items: center; z-index: 5000;
+        }
+        .modal-box { background: white; padding: 30px; border-radius: 24px; width: 90%; max-width: 500px; }
+        
+        input, select, textarea {
+            width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px;
+            border: 1px solid #e2e8f0; outline: none;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div id="login-page">
+        <div class="login-box">
+            <h2 style="color: var(--primary)">Warta Santri</h2>
+            <p style="color: #64748b; margin-top: 5px;">Silakan masuk untuk berkontribusi</p>
+            <button class="btn-google" onclick="loginGoogle()">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18">
+                Masuk dengan Google
+            </button>
+        </div>
+    </div>
+
+    <header>
+        <a href="#" class="logo">Warta<span>Santri</span></a>
+        <div class="user-area" id="user-header"></div>
+    </header>
+
+    <div class="wrapper">
+        <aside>
+            <p style="font-size: 0.7rem; color: #94a3b8; font-weight: 800; margin-bottom: 10px; padding-left: 15px;">MENU UTAMA</p>
+            <div class="nav-item active" id="nav-Semua" onclick="setFilter('Semua')">🏠 Semua</div>
+            <div class="nav-item" id="nav-Santri" onclick="setFilter('Santri')">📖 Artikel Santri</div>
+            <div class="nav-item" id="nav-Berita" onclick="setFilter('Berita')">📢 Berita Sekolah</div>
+            <div class="nav-item" id="nav-Admin" onclick="setFilter('Admin')">🛡️ Info Admin</div>
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #f1f5f9;">
+            <button onclick="logout()" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-weight:600; text-align:left; padding-left:15px;">Keluar</button>
+        </aside>
+
+        <main>
+            <div class="container" id="feedContainer">
+                </div>
+        </main>
+    </div>
+
+    <button class="fab" onclick="openModal(true)">+</button>
+
+    <div class="modal" id="postModal">
+        <div class="modal-box">
+            <h3 style="margin-bottom:15px;">Buat Artikel Baru</h3>
+            <label style="font-size:0.75rem; font-weight:700;">PILIH KATEGORI</label>
+            <select id="catIn">
+                <option value="Santri">Artikel Santri</option>
+                <option value="Berita">Berita Sekolah</option>
+                <option value="Admin">Info Admin</option>
+            </select>
+            <input type="text" id="titIn" placeholder="Judul Artikel">
+            <textarea id="conIn" rows="6" placeholder="Apa yang ingin Anda bagikan hari ini?"></textarea>
+            <button onclick="saveToFirebase()" style="width:100%; padding:14px; background:var(--primary); color:white; border:none; border-radius:10px; font-weight:700; cursor:pointer; margin-top:10px;">Terbitkan Artikel</button>
+            <button onclick="openModal(false)" style="width:100%; background:none; border:none; color:#94a3b8; margin-top:15px; cursor:pointer;">Batalkan</button>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURASI FIREBASE ALDY ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCfBJeaFAfMXmHGhWAcAKrADIfx3g10KUI",
+            authDomain: "web-aricle.firebaseapp.com",
+            databaseURL: "https://web-aricle-default-rtdb.firebaseio.com", 
+            projectId: "web-aricle",
+            storageBucket: "web-aricle.firebasestorage.app",
+            messagingSenderId: "89158729588",
+            appId: "1:89158729588:web:b27c5b2aeafa483220b621"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+        let userData = null;
+        let currentCategory = "Semua";
+
+        // Pantau Perubahan Status Login
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                userData = user;
+                document.getElementById('login-page').classList.add('hidden');
+                document.getElementById('user-header').innerHTML = `
+                    <span style="font-size:0.85rem; font-weight:700;">${user.displayName}</span>
+                    <img src="${user.photoURL}" class="user-img">
+                `;
+                loadFeed();
+            } else {
+                document.getElementById('login-page').classList.remove('hidden');
+            }
+        });
+
+        function loginGoogle() { auth.signInWithPopup(googleProvider); }
+        function logout() { auth.signOut().then(() => location.reload()); }
+        function openModal(show) { document.getElementById('postModal').style.display = show ? 'flex' : 'none'; }
+
+        function setFilter(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('nav-' + cat).classList.add('active');
+            loadFeed();
+        }
+
+        function saveToFirebase() {
+            const title = document.getElementById('titIn').value;
+            const content = document.getElementById('conIn').value;
+            const category = document.getElementById('catIn').value;
+
+            if (title && content) {
+                db.ref('articles').push({
+                    authorName: userData.displayName,
+                    authorUid: userData.uid,
+                    authorImg: userData.photoURL,
+                    category: category,
+                    title: title,
+                    content: content,
+                    date: new Date().toLocaleDateString('id-ID'),
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                openModal(false);
+                document.getElementById('titIn').value = "";
+                document.getElementById('conIn').value = "";
+            } else {
+                alert("Mohon lengkapi judul dan isi artikel!");
+            }
+        }
+
+        function deleteArticle(id) {
+            if (confirm("Hapus artikel ini secara permanen?")) {
+                db.ref('articles/' + id).remove();
+            }
+        }
+
+        function loadFeed() {
+            db.ref('articles').orderByChild('timestamp').on('value', snapshot => {
+                const container = document.getElementById('feedContainer');
+                container.innerHTML = "";
+                const data = snapshot.val();
+                
+                if (data) {
+                    Object.entries(data).reverse().forEach(([id, art]) => {
+                        if (currentCategory !== "Semua" && art.category !== currentCategory) return;
+
+                        const isOwner = userData && userData.uid === art.authorUid;
+                        const isAdmin = userData && userData.email === "aldy.akbar492@gmail.com";
+
+                        const card = document.createElement('div');
+                        card.className = 'card';
+                        card.innerHTML = `
+                            ${(isOwner || isAdmin) ? `<button class="btn-del" onclick="deleteArticle('${id}')">🗑️</button>` : ''}
+                            <span class="badge badge-${art.category.toLowerCase()}">${art.category}</span>
+                            <h2 style="margin-bottom:8px; padding-right:35px; line-height:1.3;">${art.title}</h2>
+                            <p style="font-size:0.75rem; color:#94a3b8; margin-bottom:15px; display:flex; align-items:center; gap:5px;">
+                                <img src="${art.authorImg || ''}" style="width:18px; height:18px; border-radius:50%;">
+                                Oleh <b>${art.authorName}</b> • ${art.date}
+                            </p>
+                            <p style="white-space:pre-wrap; line-height:1.6; color:#374151;">${art.content}</p>
+                        `;
+                        container.appendChild(card);
+                    });
+                } else {
+                    container.innerHTML = "<p style='text-align:center; color:#94a3b8; margin-top:50px;'>Belum ada artikel yang diterbitkan.</p>";
+                }
+            });
+        }
+    </script>
+</body>
+</html>
